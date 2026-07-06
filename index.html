@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Printbakery 검색어 대시보드</title>
+<style>
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: #e8e4df;
+    --text-primary: #1a1816;
+    --text-secondary: #6b6460;
+    --text-muted: #a09890;
+    --accent: #2d5be3;
+    --accent-soft: #eef2fd;
+    --rank-bar: #2d5be3;
+    --tag-bg: #f0ede8;
+    --danger: #e35b2d;
+    --success: #2db87a;
+    --font-display: 'Noto Serif KR', 'Georgia', serif;
+    --font-body: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left h1 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .header-left .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg);
+    transition: all 0.15s;
+  }
+  .upload-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .upload-zone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .upload-zone svg { flex-shrink: 0; }
+  #fileInput { display: none; }
+
+  /* Period badge */
+  .period-badge {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--tag-bg);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* Main layout */
+  .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* Summary cards */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .card-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+  .card-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  /* Content grid */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .panel-meta { font-size: 12px; color: var(--text-muted); }
+
+  /* Search + filter bar */
+  .toolbar {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  select.filter-select {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text-secondary);
+    outline: none;
+    cursor: pointer;
+  }
+  select.filter-select:focus { border-color: var(--accent); }
+
+  .btn {
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1e47c8; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--tag-bg); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--accent); }
+  thead th.sorted { color: var(--accent); }
+  thead th:not(:first-child) { text-align: right; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg); }
+
+  td {
+    padding: 10px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  td:not(:first-child):not(.td-bar) { text-align: right; }
+
+  .rank-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--tag-bg);
+    color: var(--text-muted);
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .rank-num.top3 { background: var(--accent-soft); color: var(--accent); }
+
+  .keyword-cell {
+    display: flex;
+    align-items: center;
+  }
+  .keyword-text { font-weight: 500; color: var(--text-primary); }
+
+  /* Bar column */
+  .td-bar { padding: 10px 14px; min-width: 100px; }
+  .bar-bg {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--rank-bar);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  .num-events { font-weight: 600; color: var(--text-primary); }
+  .num-users { color: var(--text-secondary); }
+
+  /* Tag pills */
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 500;
+    margin-left: 6px;
+  }
+  .tag-hot { background: #fdeeed; color: #c0392b; }
+  .tag-new { background: #e8f8f0; color: #1a8f56; }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .page-info { font-size: 12px; color: var(--text-muted); }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+  }
+  .page-btn:hover { background: var(--tag-bg); }
+  .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Right panel */
+  .right-panel { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Chart panel */
+  .chart-wrap { padding: 16px 20px; }
+  .chart-bars { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .chart-row { display: flex; align-items: center; gap: 8px; }
+  .chart-label {
+    width: 80px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chart-bar-wrap { flex: 1; height: 20px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .chart-bar-inner {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
+    transition: width 0.5s ease;
+  }
+  .chart-bar-val { font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .chart-bar-inner.too-narrow .chart-bar-val { display: none; }
+  .chart-bar-ext { font-size: 11px; color: var(--text-secondary); margin-left: 4px; }
+
+  /* Recommend panel */
+  .recommend-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .recommend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .recommend-item:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .recommend-kw { font-size: 13px; font-weight: 500; }
+  .recommend-meta { font-size: 11px; color: var(--text-muted); }
+  .recommend-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  /* Download btn */
+  .download-row {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+  .download-row .btn { flex: 1; text-align: center; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+  .empty-desc { font-size: 13px; }
+
+  /* Trend indicator */
+  .trend { font-size: 11px; margin-left: 4px; }
+  .trend-up { color: var(--danger); }
+  .trend-dn { color: var(--success); }
+
+  /* Tooltip */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+  .tooltip-box {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1816;
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  @media (max-width: 1100px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .summary-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .main { padding: 16px; }
+    .header { padding: 14px 16px; }
+    .summary-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <h1>검색어 분석 대시보드</h1>
+    <div class="subtitle" id="headerSubtitle">CSV 파일을 업로드하면 분석이 시작됩니다</div>
+  </div>
+  <div class="header-right">
+    <span class="period-badge" id="periodBadge">기간 미설정</span>
+    <div class="upload-zone" id="uploadZone">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      CSV 업로드
+    </div>
+    <input type="file" id="fileInput" accept=".csv">
+  </div>
+</header>
+
+<main class="main">
+  <!-- Summary -->
+  <div class="summary-row">
+    <div class="card">
+      <div class="card-label">총 검색어 종류</div>
+      <div class="card-value" id="sumKeywords">—</div>
+      <div class="card-sub">고유 키워드 수</div>
+    </div>
+    <div class="card">
+      <div class="card-label">총 검색 이벤트</div>
+      <div class="card-value" id="sumEvents">—</div>
+      <div class="card-sub">(not set) 제외</div>
+    </div>
+    <div class="card">
+      <div class="card-label">총 검색 사용자</div>
+      <div class="card-value" id="sumUsers">—</div>
+      <div class="card-sub">중복 제거</div>
+    </div>
+    <div class="card">
+      <div class="card-label">검색당 평균 사용자</div>
+      <div class="card-value" id="sumAvg">—</div>
+      <div class="card-sub">이벤트 / 사용자</div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <!-- Main table -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">검색어 랭킹</span>
+        <span class="panel-meta" id="tableCount">— 건</span>
+      </div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchFilter" placeholder="검색어 필터링...">
+        <select class="filter-select" id="sortBy">
+          <option value="events">이벤트 수 순</option>
+          <option value="users">사용자 수 순</option>
+          <option value="ratio">이벤트/사용자 순</option>
+        </select>
+        <select class="filter-select" id="showCount">
+          <option value="50">50개</option>
+          <option value="100">100개</option>
+          <option value="200">200개</option>
+          <option value="0">전체</option>
+        </select>
+        <button class="btn btn-ghost" id="downloadBtn">↓ CSV 저장</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th data-sort="keyword">검색어</th>
+              <th class="td-bar" style="width:100px">비중</th>
+              <th data-sort="events" class="sorted">이벤트 수</th>
+              <th data-sort="users">사용자 수</th>
+              <th data-sort="ratio">이벤트/사용자</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-icon">📂</div>
+                  <div class="empty-title">파일을 업로드해주세요</div>
+                  <div class="empty-desc">우측 상단 'CSV 업로드' 버튼 또는 드래그 앤 드롭</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginationWrap" style="display:none">
+        <span class="page-info" id="pageInfo"></span>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="right-panel">
+      <!-- Top chart -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">상위 검색어 차트</span>
+          <span class="panel-meta">Top 10</span>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-bars" id="chartBars">
+            <div class="empty-state" style="padding:20px">
+              <div class="empty-desc">데이터 없음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommend -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">추천 검색어</span>
+          <span class="panel-meta">검색 집중도 상위</span>
+        </div>
+        <div class="recommend-list" id="recommendList">
+          <div class="empty-state" style="padding:20px">
+            <div class="empty-desc">데이터 없음</div>
+          </div>
+        </div>
+        <div class="download-row">
+          <button class="btn btn-primary" id="downloadRecommend">추천 검색어 CSV 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let allData = [];
+let filteredData = [];
+let currentPage = 1;
+let sortField = 'events';
+let sortAsc = false;
+let periodText = '';
+const PAGE_SIZE = 50;
+
+// ── Upload ─────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) readFile(e.target.files[0]);
+});
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => parseCSV(e.target.result);
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ── CSV Parse ──────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+  // 기간 추출
+  let startDate = '', endDate = '';
+  for (const line of lines) {
+    if (line.startsWith('# 시작일:') && !startDate) startDate = line.replace('# 시작일:', '').trim();
+    if (line.startsWith('# 종료일:') && !endDate) endDate = line.replace('# 종료일:', '').trim();
+    if (startDate && endDate) break;
+  }
+  if (startDate && endDate) {
+    periodText = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+    document.getElementById('periodBadge').textContent = periodText;
+    document.getElementById('headerSubtitle').textContent = `PrintBakery001 · ${periodText}`;
+  }
+
+  // search_term 섹션 찾기
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === '맞춤 매개변수,이벤트 수,총 사용자') {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  if (headerIdx === -1) {
+    // 일반 헤더 시도: keyword,events,users 형태
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i].trim().toLowerCase();
+      if (l.includes('검색어') || l.includes('keyword') || l.includes('search_term')) {
+        headerIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (headerIdx === -1) {
+    alert('검색어 데이터를 찾을 수 없습니다.\nGA4 이벤트 CSV 파일을 확인해주세요.');
+    return;
+  }
+
+  const data = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#')) continue;
+
+    // CSV 파싱 (따옴표 처리)
+    const cols = parseCSVLine(line);
+    if (cols.length < 2) continue;
+
+    const keyword = cols[0].trim().replace(/^"|"$/g, '');
+    if (!keyword || keyword === '(not set)') continue;
+
+    const events = parseInt(cols[1]) || 0;
+    const users = parseInt(cols[2]) || 0;
+    const ratio = users > 0 ? (events / users) : 0;
+
+    data.push({ keyword, events, users, ratio });
+  }
+
+  allData = data;
+  applyFilters();
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current);
+  return result;
+}
+
+function formatDate(d) {
+  if (d.length === 8) return `${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`;
+  return d;
+}
+
+// ── Filter & Sort ──────────────────────────────────────
+function applyFilters() {
+  const keyword = document.getElementById('searchFilter').value.trim().toLowerCase();
+  const sort = document.getElementById('sortBy').value;
+  const showCount = parseInt(document.getElementById('showCount').value);
+
+  let data = allData.filter(d => !keyword || d.keyword.toLowerCase().includes(keyword));
+
+  // Sort
+  data.sort((a, b) => {
+    let va = sort === 'events' ? a.events : sort === 'users' ? a.users : a.ratio;
+    let vb = sort === 'events' ? b.events : sort === 'users' ? b.users : b.ratio;
+    return sortAsc ? va - vb : vb - va;
+  });
+
+  filteredData = data;
+  currentPage = 1;
+
+  // Summary (always from allData)
+  updateSummary();
+  renderChart();
+  renderRecommend();
+  renderTable();
+}
+
+// ── Summary ────────────────────────────────────────────
+function updateSummary() {
+  const totalEvents = allData.reduce((s, d) => s + d.events, 0);
+  const totalUsers = allData.reduce((s, d) => s + d.users, 0);
+  const avg = totalUsers > 0 ? (totalEvents / totalUsers).toFixed(1) : '—';
+
+  document.getElementById('sumKeywords').textContent = allData.length.toLocaleString();
+  document.getElementById('sumEvents').textContent = totalEvents.toLocaleString();
+  document.getElementById('sumUsers').textContent = totalUsers.toLocaleString();
+  document.getElementById('sumAvg').textContent = avg;
+}
+
+// ── Chart ──────────────────────────────────────────────
+function renderChart() {
+  const top10 = [...allData].sort((a,b) => b.events - a.events).slice(0, 10);
+  const maxVal = top10[0]?.events || 1;
+  const container = document.getElementById('chartBars');
+
+  if (!top10.length) {
+    container.innerHTML = '<div class="empty-desc" style="color:var(--text-muted);text-align:center;padding:16px">데이터 없음</div>';
+    return;
+  }
+
+  container.innerHTML = top10.map(d => {
+    const pct = Math.round((d.events / maxVal) * 100);
+    const narrow = pct < 20;
+    return `
+      <div class="chart-row">
+        <div class="chart-label" title="${d.keyword}">${d.keyword}</div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar-inner${narrow ? ' too-narrow' : ''}" style="width:${pct}%">
+            <span class="chart-bar-val">${d.events.toLocaleString()}</span>
+          </div>
+        </div>
+        ${narrow ? `<span class="chart-bar-ext">${d.events.toLocaleString()}</span>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ── Recommend ──────────────────────────────────────────
+function renderRecommend() {
+  // 추천 기준: 이벤트 수 상위 + 이벤트/사용자 비율 높은 것 (집중도 높음)
+  const scored = allData.map(d => ({
+    ...d,
+    score: d.events * 0.6 + d.ratio * d.events * 0.4
+  })).sort((a,b) => b.score - a.score).slice(0, 10);
+
+  const container = document.getElementById('recommendList');
+  if (!scored.length) {
+    container.innerHTML = '<div class="empty-desc" style="color:var(--text-muted);padding:16px">데이터 없음</div>';
+    return;
+  }
+
+  container.innerHTML = scored.map((d, i) => {
+    const isHot = i < 3;
+    return `
+      <div class="recommend-item">
+        <div>
+          <div class="recommend-kw">${d.keyword}</div>
+          <div class="recommend-meta">이벤트 ${d.events.toLocaleString()} · 사용자 ${d.users.toLocaleString()}</div>
+        </div>
+        <span class="recommend-badge">${isHot ? '🔥 HOT' : `#${i+1}`}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── Table ──────────────────────────────────────────────
+function renderTable() {
+  const showCount = parseInt(document.getElementById('showCount').value) || filteredData.length;
+  const displayData = showCount > 0 ? filteredData.slice(0, showCount) : filteredData;
+  const maxEvents = displayData[0]?.events || 1;
+
+  const ROWS_PER_PAGE = 50;
+  const totalPages = Math.ceil(displayData.length / ROWS_PER_PAGE);
+  const pageData = displayData.slice((currentPage-1)*ROWS_PER_PAGE, currentPage*ROWS_PER_PAGE);
+
+  document.getElementById('tableCount').textContent = `${filteredData.length.toLocaleString()} 건`;
+
+  const tbody = document.getElementById('tableBody');
+  if (!pageData.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">검색 결과 없음</div><div class="empty-desc">다른 키워드로 필터링해보세요</div></div></td></tr>`;
+    document.getElementById('paginationWrap').style.display = 'none';
+    return;
+  }
+
+  const globalOffset = (currentPage - 1) * ROWS_PER_PAGE;
+  tbody.innerHTML = pageData.map((d, idx) => {
+    const rank = globalOffset + idx + 1;
+    const pct = Math.round((d.events / maxEvents) * 100);
+    const isTop3 = rank <= 3;
+    const tag = rank === 1 ? '<span class="tag tag-hot">TOP</span>' : '';
+
+    return `
+      <tr>
+        <td><span class="rank-num${isTop3?' top3':''}">${rank}</span></td>
+        <td>
+          <div class="keyword-cell">
+            <span class="keyword-text">${escHtml(d.keyword)}</span>${tag}
+          </div>
+        </td>
+        <td class="td-bar">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </td>
+        <td><span class="num-events">${d.events.toLocaleString()}</span></td>
+        <td><span class="num-users">${d.users.toLocaleString()}</span></td>
+        <td>${d.ratio.toFixed(1)}</td>
+      </tr>`;
+  }).join('');
+
+  // Pagination
+  const pWrap = document.getElementById('paginationWrap');
+  if (totalPages <= 1) { pWrap.style.display = 'none'; return; }
+  pWrap.style.display = 'flex';
+  document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages} 페이지`;
+
+  const pageBtns = document.getElementById('pageBtns');
+  let btns = '';
+  btns += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const pages = getPageRange(currentPage, totalPages);
+  pages.forEach(p => {
+    if (p === '...') btns += `<button class="page-btn" disabled>…</button>`;
+    else btns += `<button class="page-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  pageBtns.innerHTML = btns;
+}
+
+function getPageRange(current, total) {
+  if (total <= 7) return Array.from({length:total},(_,i)=>i+1);
+  const pages = [1];
+  if (current > 3) pages.push('...');
+  for (let p = Math.max(2,current-1); p <= Math.min(total-1,current+1); p++) pages.push(p);
+  if (current < total-2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function goPage(p) {
+  const showCount = parseInt(document.getElementById('showCount').value) || filteredData.length;
+  const displayData = showCount > 0 ? filteredData.slice(0, showCount) : filteredData;
+  const totalPages = Math.ceil(displayData.length / 50);
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderTable();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Events ─────────────────────────────────────────────
+document.getElementById('searchFilter').addEventListener('input', applyFilters);
+document.getElementById('sortBy').addEventListener('change', applyFilters);
+document.getElementById('showCount').addEventListener('change', applyFilters);
+
+// ── Download ───────────────────────────────────────────
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const showCount = parseInt(document.getElementById('showCount').value) || filteredData.length;
+  const data = showCount > 0 ? filteredData.slice(0, showCount) : filteredData;
+  downloadCSV(data, 'search_keywords.csv');
+});
+
+document.getElementById('downloadRecommend').addEventListener('click', () => {
+  const scored = allData.map(d => ({
+    ...d, score: d.events * 0.6 + d.ratio * d.events * 0.4
+  })).sort((a,b) => b.score - a.score).slice(0, 30);
+  downloadCSV(scored, 'recommend_keywords.csv');
+});
+
+function downloadCSV(data, filename) {
+  if (!data.length) { alert('데이터가 없습니다.'); return; }
+  const header = '검색어,이벤트 수,사용자 수,이벤트/사용자\n';
+  const rows = data.map(d => `"${d.keyword}",${d.events},${d.users},${d.ratio.toFixed(2)}`).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + header + rows], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Auto load sample if available ──────────────────────
+// 페이지 로드 시 드래그 안내
+document.body.addEventListener('dragover', e => e.preventDefault());
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+});
+</script>
+</body>
+</html>
